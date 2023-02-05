@@ -3,8 +3,6 @@ import pathlib
 
 import numpy
 import torch
-import chess
-import chess.engine
 
 from .abstract_game import AbstractGame
 
