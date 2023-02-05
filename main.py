@@ -1,10 +1,12 @@
 import pathlib
 
 import ray
+import wandb
 
 from muzero import MuZero
 
 if __name__ == "__main__":
+
     muzero = MuZero('spiel')
 
     try:
@@ -23,5 +25,7 @@ if __name__ == "__main__":
     except:
         print('error loading from checkpoint')
 
+    wandb.tensorboard.patch(root_logdir="results")
+    wandb.init(project='MuChes', sync_tensorboard=True)
     muzero.train()
     ray.shutdown()
