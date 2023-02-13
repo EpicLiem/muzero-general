@@ -4,6 +4,8 @@ import time
 import numpy
 import ray
 import torch
+import torch_xla
+import torch_xla.core.xla_model as xm
 
 import models
 
@@ -25,7 +27,7 @@ class Trainer:
         # Initialize the network
         self.model = models.MuZeroNetwork(self.config)
         self.model.set_weights(copy.deepcopy(initial_checkpoint["weights"]))
-        self.model.to(torch.device("cuda" if self.config.train_on_gpu else "cpu"))
+        self.model.to(torch.device(xm.xla_device()))
         self.model.train()
 
         self.training_step = initial_checkpoint["training_step"]

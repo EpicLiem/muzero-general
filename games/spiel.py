@@ -1,8 +1,10 @@
 import datetime
 import pathlib
 
-import numpy
+import numpy as np
 import torch
+import chess
+import stockfish
 
 from .abstract_game import AbstractGame
 
@@ -48,10 +50,10 @@ class MuZeroConfig:
 
 
         ### Self-Play
-        self.num_workers = 1  # Number of simultaneous threads/workers self-playing to feed the replay buffer
-        self.selfplay_on_gpu = True
-        self.max_moves = self.game.max_game_length()  # Maximum number of moves if game is not finished before
-        self.num_simulations = 800  # Number of future moves self-simulated
+        self.num_workers = 8  # Number of simultaneous threads/workers self-playing to feed the replay buffer
+        self.selfplay_on_gpu = False
+        self.max_moves = 250  # Maximum number of moves if game is not finished before
+        self.num_simulations = 25  # Number of future moves self-simulated
         self.discount = 0.1  # Chronological discount of the reward
         self.temperature_threshold = None  # Number of moves before dropping the temperature given by visit_softmax_temperature_fn to 0 (ie selecting the best action). If None, visit_softmax_temperature_fn is used every time
 
@@ -111,11 +113,11 @@ class MuZeroConfig:
 
 
         ### Replay Buffer
-        self.replay_buffer_size = 3000  # Number of self-play games to keep in the replay buffer
+        self.replay_buffer_size = 1000  # Number of self-play games to keep in the replay buffer
         self.num_unroll_steps = 20  # Number of game moves to keep for every batch element
         self.td_steps = 20  # Number of steps in the future to take into account for calculating the target value
         self.PER = True  # Prioritized Replay (See paper appendix Training), select in priority the elements in the replay buffer which are unexpected for the network
-        self.PER_alpha = 0.5  # How much prioritization is used, 0 corresponding to the uniform case, paper suggests 1
+        self.PER_alpha = 1  # How much prioritization is used, 0 corresponding to the uniform case, paper suggests 1
 
         # Reanalyze (See paper appendix Reanalyse)
         self.use_last_model_value = True  # Use the last model to provide a fresher, stable n-step value (See paper appendix Reanalyze)
@@ -125,7 +127,7 @@ class MuZeroConfig:
 
         ### Adjust the self play / training ratio to avoid over/underfitting
         self.self_play_delay = 0  # Number of seconds to wait after each played game
-        self.training_delay = 0  # Number of seconds to wait after each training step
+        self.training_delay = 2  # Number of seconds to wait after each training step
         self.ratio = None  # Desired training steps per self played step ratio. Equivalent to a synchronous version, training can take much longer. Set it to None to disable it
         # fmt: on
 
@@ -197,7 +199,6 @@ class Game(AbstractGame):
         Display the game observation.
         """
         self.env.render()
-        input("Press enter to take a step ")
 
     def legal_actions_human(self):
         return self.env.human_legal_actions()
@@ -236,12 +237,26 @@ class Game(AbstractGame):
         col = action_number % 3 + 1
         return f"Play row {row}, column {col}"
 
+    def expert_agent(self):
+        """
+        Hard coded agent that MuZero faces to assess his progress in multiplayer games.
+        It doesn't influence training
+
+        Returns:
+            Action as an integer to take in the current game state
+        """
+        return self.env.expert_action()
+
 
 class Spiel:
     def __init__(self):
         self.game = game
         self.board = self.game.new_initial_state()
         self.player = 1
+        self.stockfish = stockfish.Stockfish(path='/usr/games/stockfish', depth=1, parameters={'Threads': 8})
+
+    def sig(self, x):
+        return 1 / (1 + np.exp(-x / 100))
 
     def to_play(self):
         return 0 if self.player == 1 else 1
@@ -251,12 +266,24 @@ class Spiel:
         self.player = 1
         return self.get_observation()
 
-    def step(self, action):
+    def step(self, action, render=False):
         self.board = self.board.child(action)
 
         done = self.board.is_terminal()
 
-        reward = 1 if self.have_winner() else 0
+        reward = 0
+
+        if self.have_winner():
+            reward =  1000
+        elif not done:
+            self.stockfish.set_fen_position(repr(self.board))
+            analysis = self.stockfish.get_evaluation()
+            if analysis['type'] == 'mate':
+                reward = (1.0 - (analysis["value"] * 0.01)) * self.player
+            else:
+                reward = self.sig(analysis["value"]) * self.player
+        elif done:
+            reward = 0
 
         observation = self.get_observation()
 
@@ -269,7 +296,7 @@ class Spiel:
             current_player = 1
         else:
             current_player = 0
-        return numpy.array(self.board.observation_tensor(current_player)).reshape(
+        return np.array(self.board.observation_tensor(current_player)).reshape(
             self.game.observation_tensor_shape()
         )
 
@@ -289,6 +316,12 @@ class Spiel:
                 return True
 
         return False
+
+    def expert_action(self):
+        self.stockfish.set_fen_position(repr(self.board))
+        best_move = self.stockfish.get_best_move_time(200)
+        best_move = chess.Board(repr(self.board)).san(chess.Move.from_uci(best_move))
+        return self.board.string_to_action(best_move)
 
     def human_legal_actions(self):
         return [self.board.action_to_string(x) for x in self.board.legal_actions()]

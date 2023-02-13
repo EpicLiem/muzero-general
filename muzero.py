@@ -20,6 +20,8 @@ import self_play
 import shared_storage
 import trainer
 
+import chess
+import chess.pgn
 
 class MuZero:
     """
@@ -178,6 +180,7 @@ class MuZero:
             self_play.SelfPlay.options(
                 num_cpus=0,
                 num_gpus=num_gpus_per_worker if self.config.selfplay_on_gpu else 0,
+
             ).remote(
                 self.checkpoint,
                 self.Game,
@@ -421,6 +424,31 @@ class MuZero:
                     for history in results
                 ]
             )
+        board = chess.Board()
+        game = self.Game()
+
+        moves = []
+
+        t = 0
+        try:
+            for i in results:
+                i.action_history
+                i.action_history.pop(0)
+                for o in i.action_history:
+                    t += 1
+                    move = game.env.board.action_to_string(o)
+                    game.env.step(o)
+                    print(move, t)
+                    game.env.render()
+                    moves.append(move)
+        except:
+            print("whyyyyy")
+
+        for i in moves:
+            board.push_san(i)
+        print(len(moves))
+        game = chess.pgn.Game.from_board(board)
+        print(game, file=open('logs/log.pgn', 'w'), end='\n\n')
         return result
 
     def load_model(self, checkpoint_path=None, replay_buffer_path=None):
