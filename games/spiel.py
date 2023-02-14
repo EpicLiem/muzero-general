@@ -50,7 +50,7 @@ class MuZeroConfig:
 
 
         ### Self-Play
-        self.num_workers = 8  # Number of simultaneous threads/workers self-playing to feed the replay buffer
+        self.num_workers = 1  # Number of simultaneous threads/workers self-playing to feed the replay buffer
         self.selfplay_on_gpu = False
         self.max_moves = 250  # Maximum number of moves if game is not finished before
         self.num_simulations = 25  # Number of future moves self-simulated
@@ -253,7 +253,7 @@ class Spiel:
         self.game = game
         self.board = self.game.new_initial_state()
         self.player = 1
-        self.stockfish = stockfish.Stockfish(path='/usr/games/stockfish', depth=1, parameters={'Threads': 8})
+        self.stockfish = stockfish.Stockfish(path='/usr/games/stockfish', depth=1, parameters={'Threads': 2})
 
     def sig(self, x):
         return 1 / (1 + np.exp(-x / 100))
