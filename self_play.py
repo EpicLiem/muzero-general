@@ -4,6 +4,7 @@ import time
 import numpy
 import ray
 import torch
+import torch_xla.core.xla_model as xm
 
 import models
 
@@ -25,7 +26,7 @@ class SelfPlay:
         # Initialize the network
         self.model = models.MuZeroNetwork(self.config)
         self.model.set_weights(initial_checkpoint["weights"])
-        self.model.to(torch.device("cuda" if self.config.selfplay_on_gpu else "cpu"))
+        self.model.to(torch.device(xm.xla_device()))
         self.model.eval()
 
     def continuous_self_play(self, shared_storage, replay_buffer, test_mode=False):
