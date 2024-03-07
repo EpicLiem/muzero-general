@@ -30,8 +30,8 @@ class MuZeroConfig:
 
 
         ### Self-Play
-        self.num_workers = 1  # Number of simultaneous threads/workers self-playing to feed the replay buffer
-        self.selfplay_on_gpu = False
+        self.num_workers = 12  # Number of simultaneous threads/workers self-playing to feed the replay buffer
+        self.selfplay_on_gpu = True
         self.max_moves = 9  # Maximum number of moves if game is not finished before
         self.num_simulations = 25  # Number of future moves self-simulated
         self.discount = 1  # Chronological discount of the reward
@@ -53,14 +53,14 @@ class MuZeroConfig:
 
         # Residual Network
         self.downsample = False  # Downsample observations before representation network, False / "CNN" (lighter) / "resnet" (See paper appendix Network Architecture)
-        self.blocks = 1  # Number of blocks in the ResNet
-        self.channels = 16  # Number of channels in the ResNet
-        self.reduced_channels_reward = 16  # Number of channels in reward head
-        self.reduced_channels_value = 16  # Number of channels in value head
-        self.reduced_channels_policy = 16  # Number of channels in policy head
-        self.resnet_fc_reward_layers = [8]  # Define the hidden layers in the reward head of the dynamic network
-        self.resnet_fc_value_layers = [8]  # Define the hidden layers in the value head of the prediction network
-        self.resnet_fc_policy_layers = [8]  # Define the hidden layers in the policy head of the prediction network
+        self.blocks = 2  # Number of blocks in the ResNet
+        self.channels = 32  # Number of channels in the ResNet
+        self.reduced_channels_reward = 32  # Number of channels in reward head
+        self.reduced_channels_value = 32  # Number of channels in value head
+        self.reduced_channels_policy = 32  # Number of channels in policy head
+        self.resnet_fc_reward_layers = [16]  # Define the hidden layers in the reward head of the dynamic network
+        self.resnet_fc_value_layers = [16]  # Define the hidden layers in the value head of the prediction network
+        self.resnet_fc_policy_layers = [16]  # Define the hidden layers in the policy head of the prediction network
 
         # Fully Connected Network
         self.encoding_size = 32
@@ -79,7 +79,7 @@ class MuZeroConfig:
         self.batch_size = 64  # Number of parts of games to train on at each training step
         self.checkpoint_interval = 10  # Number of training steps before using the model for self-playing
         self.value_loss_weight = 0.25  # Scale the value loss to avoid overfitting of the value function, paper recommends 0.25 (See paper appendix Reanalyze)
-        self.train_on_gpu = torch.cuda.is_available()  # Train on GPU if available
+        self.train_on_gpu = True  # Train on GPU if available
 
         self.optimizer = "Adam"  # "Adam" or "SGD". Paper uses SGD
         self.weight_decay = 1e-4  # L2 weights regularization
@@ -101,7 +101,7 @@ class MuZeroConfig:
 
         # Reanalyze (See paper appendix Reanalyse)
         self.use_last_model_value = True  # Use the last model to provide a fresher, stable n-step value (See paper appendix Reanalyze)
-        self.reanalyse_on_gpu = False
+        self.reanalyse_on_gpu = True
 
 
 
